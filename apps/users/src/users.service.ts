@@ -1,41 +1,26 @@
 import { Injectable } from '@nestjs/common';
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  password?: string;
-  role?: string;
-}
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
-  private users: User[] = [];
-  private idCounter = 1;
+  constructor(
+    @InjectModel(User.name)
+    private userModel: Model<User>,
+  ) {}
 
-  create(user: Omit<User, 'id'>): User {
-    const newUser: User = {
-      id: this.idCounter++,
-      ...user,
-    };
+  async create(data: any) {
+  const result = await this.userModel.create(data);
 
-    this.users.push(newUser);
-    return newUser;
-  }
+  console.log('🔥 SAVED:', result);
+  console.log('🔥 DB NAME:', this.userModel.db.name);
+  console.log('🔥 COLLECTION:', this.userModel.collection.name);
 
-  findAll(): User[] {
-    return this.users;
-  }
+  return result;
+}
 
-  findOne(id: number): User | undefined {
-    return this.users.find(u => u.id === id);
-  }
-
-  findByEmail(email: string): User | undefined {
-    return this.users.find(u => u.email === email);
-  }
-
-  remove(id: number): void {
-    this.users = this.users.filter(u => u.id !== id);
+  async findAll() {
+    return this.userModel.find().exec();
   }
 }
