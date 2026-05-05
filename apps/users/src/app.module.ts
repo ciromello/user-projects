@@ -1,26 +1,25 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+
 import { UsersModule } from './users.module';
+import { DocumentsModule } from './documents/documents.module';
+import { SectionsModule } from './sections/sections.module';
 
 @Module({
   imports: [
+    // Load .env globally
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
-    // 👇 IMPORTANT: async config ensures env is loaded properly
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI'),
-      }),
-    }),
+    // MongoDB connection (Atlas or local)
+    MongooseModule.forRoot(process.env.MONGO_URI as string),
 
+    // Feature modules
     UsersModule,
+    DocumentsModule,
+    SectionsModule,
   ],
 })
 export class AppModule {}
-
-console.log('MONGO_URI:', process.env.MONGO_URI);
