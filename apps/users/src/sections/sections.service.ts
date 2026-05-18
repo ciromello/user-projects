@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Section, SectionDocument } from './schemas/section.schema';
+
+import {
+  Section,
+  SectionDocument,
+} from './schemas/section.schema';
 
 @Injectable()
 export class SectionsService {
@@ -20,10 +24,11 @@ export class SectionsService {
   // =========================
   // GET FLAT SECTIONS
   // =========================
-  async findAll(documentId: string) {
+  async findByDocument(documentId: string) {
     return this.sectionModel
       .find({ documentId })
       .sort({ order: 1 })
+      .lean()
       .exec();
   }
 
@@ -35,34 +40,214 @@ export class SectionsService {
   }
 
   // =========================
-  // STRUCTURED TREE VIEW
+  // UPDATE TITLE
+  // =========================
+  async updateTitle(id: string, title: string) {
+    return this.sectionModel.findByIdAndUpdate(
+      id,
+      { title },
+      { new: true },
+    );
+  }
+
+  // =========================
+  // DELETE SECTION RECURSIVELY
+  // =========================
+  async deleteSection(id: string) {
+    // find children
+    const children = await this.sectionModel.find({
+      parentSectionId: id,
+    });
+
+    // recursively delete children
+    for (const child of children) {
+      await this.deleteSection(
+        child._id.toString(),
+      );
+    }
+
+    // delete current section
+    return this.sectionModel.findByIdAndDelete(id);
+  }
+
+  // =========================
+  // MOVE SECTION
+  // =========================
+  async moveSection(
+    sectionId: string,
+    body: any,
+  ) {
+    const {
+      newParentSectionId,
+      newOrder,
+    } = body;
+
+    const section =
+      await this.sectionModel.findById(
+        sectionId,
+      );
+
+    if (!section) {
+      throw new Error('Section not found');
+    }
+
+    const oldParent =
+      section.parentSectionId;
+
+    const oldOrder = section.order;
+
+    // =========================
+    // PREVENT SELF-PARENTING
+    // =========================
+    if (sectionId === newParentSectionId) {
+      throw new Error(
+        'Cannot parent a section to itself',
+      );
+    }
+
+    // =========================
+    // PREVENT CIRCULAR PARENTING
+    // =========================
+    const isDescendant = async (
+      parentId: string,
+      childId: string,
+    ): Promise<boolean> => {
+      if (!parentId) return false;
+
+      const parent =
+        await this.sectionModel.findById(
+          parentId,
+        );
+
+      if (!parent) return false;
+
+      if (
+        parent.parentSectionId?.toString() ===
+        childId
+      ) {
+        return true;
+      }
+
+      return isDescendant(
+        parent.parentSectionId?.toString() ||
+          '',
+        childId,
+      );
+    };
+
+    if (
+      await isDescendant(
+        newParentSectionId,
+        sectionId,
+      )
+    ) {
+      throw new Error(
+        'Cannot move into own descendant',
+      );
+    }
+
+    // =========================
+    // FIX OLD PARENT GAP
+    // =========================
+    await this.sectionModel.updateMany(
+      {
+        documentId: section.documentId,
+        parentSectionId: oldParent,
+        order: { $gt: oldOrder },
+      },
+      {
+        $inc: { order: -1 },
+      },
+    );
+
+    // =========================
+    // SHIFT NEW SIBLINGS
+    // =========================
+    await this.sectionModel.updateMany(
+      {
+        documentId: section.documentId,
+        parentSectionId:
+          newParentSectionId,
+        order: { $gte: newOrder },
+      },
+      {
+        $inc: { order: 1 },
+      },
+    );
+
+    // =========================
+    // UPDATE MOVED SECTION
+    // =========================
+    section.parentSectionId =
+      newParentSectionId;
+
+    section.order = newOrder;
+
+    return section.save();
+  }
+
+  // =========================
+  // REORDER
+  // =========================
+  async reorder(
+    documentId: string,
+    sectionId: string,
+    newOrder: number,
+  ) {
+    return this.sectionModel.findOneAndUpdate(
+      {
+        _id: sectionId,
+        documentId,
+      },
+      {
+        order: newOrder,
+      },
+      {
+        new: true,
+      },
+    );
+  }
+
+  // =========================
+  // TREE STRUCTURE
   // =========================
   async getStructure(documentId: string) {
-    const sections = await this.sectionModel
-      .find({ documentId })
-      .sort({ order: 1 })
-      .lean();
+    const sections =
+      await this.sectionModel
+        .find({ documentId })
+        .sort({ order: 1 })
+        .lean();
 
     const map = new Map<string, any>();
+
     const tree: any[] = [];
 
+    // =========================
+    // NORMALIZE
+    // =========================
     sections.forEach((section) => {
       map.set(section._id.toString(), {
-        _id: section._id,
-        documentId: section.documentId,
-        title: section.title,
-        content: section.content,
-        order: section.order,
-        parentSectionId: section.parentSectionId
-          ? section.parentSectionId.toString()
-          : null,
+        ...section,
+        _id: section._id.toString(),
+
+        parentSectionId:
+          section.parentSectionId
+            ? section.parentSectionId.toString()
+            : null,
+
         children: [],
       });
     });
 
+    // =========================
+    // BUILD TREE
+    // =========================
     map.forEach((node) => {
       if (node.parentSectionId) {
-        const parent = map.get(node.parentSectionId);
+        const parent = map.get(
+          node.parentSectionId,
+        );
+
         if (parent) {
           parent.children.push(node);
         }
@@ -71,10 +256,18 @@ export class SectionsService {
       }
     });
 
+    // =========================
+    // SORT TREE
+    // =========================
     const sortTree = (nodes: any[]) => {
-      nodes.sort((a, b) => a.order - b.order);
+      nodes.sort(
+        (a, b) => a.order - b.order,
+      );
+
       nodes.forEach((n) => {
-        if (n.children.length > 0) sortTree(n.children);
+        if (n.children?.length) {
+          sortTree(n.children);
+        }
       });
     };
 
@@ -83,68 +276,6 @@ export class SectionsService {
     return {
       documentId,
       structure: tree,
-    };
-  }
-
-  // =========================
-  // MOVE / DRAG & DROP
-  // =========================
-  async moveSection(
-    sectionId: string,
-    body: { newOrder: number; newParentSectionId?: string | null },
-  ) {
-    const section = await this.sectionModel.findById(sectionId);
-    if (!section) throw new Error('Section not found');
-
-    const oldParentId = section.parentSectionId?.toString() || null;
-    const newParentId = body.newParentSectionId ?? null;
-
-    const oldOrder = section.order;
-    const newOrder = body.newOrder;
-
-    // 1. Update moved section
-    section.parentSectionId = newParentId as any;
-    section.order = newOrder;
-    await section.save();
-
-    // 2. Fix old siblings
-    await this.sectionModel.updateMany(
-      {
-        documentId: section.documentId,
-        parentSectionId: oldParentId,
-        order: { $gt: oldOrder },
-        _id: { $ne: sectionId },
-      },
-      { $inc: { order: -1 } },
-    );
-
-    // 3. Fix new siblings
-    await this.sectionModel.updateMany(
-      {
-        documentId: section.documentId,
-        parentSectionId: newParentId,
-        order: { $gte: newOrder },
-        _id: { $ne: sectionId },
-      },
-      { $inc: { order: 1 } },
-    );
-
-    // 4. Normalize ordering (safety step)
-    const siblings = await this.sectionModel
-      .find({
-        documentId: section.documentId,
-        parentSectionId: newParentId,
-      })
-      .sort({ order: 1 });
-
-    for (let i = 0; i < siblings.length; i++) {
-      siblings[i].order = i + 1;
-      await siblings[i].save();
-    }
-
-    return {
-      message: 'Section moved successfully',
-      section,
     };
   }
 }

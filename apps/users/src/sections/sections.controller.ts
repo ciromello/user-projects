@@ -5,38 +5,40 @@ import { SectionsService } from './sections.service';
 export class SectionsController {
   constructor(private readonly sectionsService: SectionsService) {}
 
-  // =========================
-  // CREATE SECTION
-  // =========================
+  // CREATE
   @Post()
   create(@Body() body: any) {
     return this.sectionsService.create(body);
   }
 
-  // =========================
-  // GET SECTIONS BY DOCUMENT
-  // =========================
+  // GET FLAT (for debugging)
   @Get(':documentId')
   findByDocument(@Param('documentId') documentId: string) {
-    return this.sectionsService.findAll(documentId);
+    return this.sectionsService.findByDocument(documentId);
   }
 
-  // =========================
-  // STRUCTURE (TREE VIEW)
-  // =========================
-  @Get('document/:id/structure')
+  // 🔥 TREE STRUCTURE (IMPORTANT)
+  @Get('/document/:id/structure')
   getStructure(@Param('id') documentId: string) {
     return this.sectionsService.getStructure(documentId);
   }
 
-  // =========================
-  // MOVE SECTION (DRAG & DROP)
-  // =========================
+  // MOVE (drag & drop)
+  @Patch(':id')
+  updateTitle(
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.sectionsService.updateTitle(
+      id,
+      body.title,
+    );
+  } 
+
   @Patch(':id/move')
   moveSection(
     @Param('id') id: string,
-    @Body()
-    body: { newOrder: number; newParentSectionId?: string | null },
+    @Body() body: { newOrder: number; newParentSectionId?: string | null },
   ) {
     return this.sectionsService.moveSection(id, body);
   }
