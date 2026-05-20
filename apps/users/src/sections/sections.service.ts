@@ -51,6 +51,21 @@ export class SectionsService {
   }
 
   // =========================
+  // UPDATE CONTENT
+  // =========================
+  async updateContent(
+    id: string,
+    content: string,
+  ) {
+    return this.sectionModel.findByIdAndUpdate(
+      id,
+      { content },
+      { new: true },
+    );
+  }
+
+
+  // =========================
   // DELETE SECTION RECURSIVELY
   // =========================
   async deleteSection(id: string) {

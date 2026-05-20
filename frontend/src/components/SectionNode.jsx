@@ -1,8 +1,13 @@
-import React, { useState } from "react";
+import React, {
+  useState,
+  useEffect,
+} from "react";
 
 import { useSortable } from "@dnd-kit/sortable";
 
 import { CSS } from "@dnd-kit/utilities";
+
+import ReactMarkdown from "react-markdown";
 
 export default function SectionNode({
   section,
@@ -10,11 +15,20 @@ export default function SectionNode({
   onAddChild,
   onDelete,
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] =
+    useState(true);
 
   const [title, setTitle] = useState(
     section.title
   );
+
+  const [content, setContent] =
+    useState(section.content || "");
+
+  const [
+    editingContent,
+    setEditingContent,
+  ] = useState(false);
 
   const hasChildren =
     section.children &&
@@ -34,7 +48,8 @@ export default function SectionNode({
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform:
+      CSS.Transform.toString(transform),
     transition,
   };
 
@@ -42,20 +57,73 @@ export default function SectionNode({
   // SAVE TITLE
   // =========================
   async function saveTitle() {
-    await fetch(
-      `http://localhost:3000/sections/${section._id}/title`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          title,
-        }),
-      }
-    );
+    try {
+      await fetch(
+        `http://localhost:3000/sections/${section._id}/title`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title,
+          }),
+        }
+      );
+    } catch (err) {
+      console.error(err);
+    }
   }
+
+  // =========================
+  // SAVE CONTENT
+  // =========================
+  async function saveContent(
+    newContent
+  ) {
+    try {
+      await fetch(
+        `http://localhost:3000/sections/${section._id}/content`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            content: newContent,
+          }),
+        }
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // =========================
+  // AUTOSAVE TITLE
+  // =========================
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      saveTitle();
+    }, 500);
+
+    return () =>
+      clearTimeout(timeout);
+  }, [title]);
+
+  // =========================
+  // AUTOSAVE CONTENT
+  // =========================
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      saveContent(content);
+    }, 500);
+
+    return () =>
+      clearTimeout(timeout);
+  }, [content]);
 
   // =========================
   // DELETE
@@ -81,7 +149,10 @@ export default function SectionNode({
             ? "1px solid #d1d5db"
             : "none",
         paddingLeft:
-          depth > 0 ? "12px" : "0px",
+          depth > 0
+            ? "12px"
+            : "0px",
+        marginTop: "8px",
       }}
     >
       {/* NODE */}
@@ -89,117 +160,224 @@ export default function SectionNode({
         {...attributes}
         {...listeners}
         style={{
-          padding: "8px",
+          padding: "10px",
           marginBottom: "6px",
           border: "1px solid #ddd",
-          borderRadius: "6px",
+          borderRadius: "8px",
           background: "#fff",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "8px",
+          flexDirection: "column",
+          gap: "10px",
           cursor: "grab",
         }}
       >
-        {/* LEFT */}
+        {/* TOP ROW */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
+            justifyContent:
+              "space-between",
             gap: "8px",
-            flex: 1,
           }}
         >
-          {/* EXPAND */}
-          {hasChildren ? (
-            <button
-              onClick={() =>
-                setExpanded(!expanded)
+          {/* LEFT */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flex: 1,
+            }}
+          >
+            {/* EXPAND */}
+            {hasChildren ? (
+              <button
+                onClick={() =>
+                  setExpanded(
+                    !expanded
+                  )
+                }
+                style={{
+                  border: "none",
+                  background:
+                    "transparent",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  width: "18px",
+                }}
+              >
+                {expanded
+                  ? "▼"
+                  : "▶"}
+              </button>
+            ) : (
+              <span
+                style={{
+                  width: "18px",
+                }}
+              >
+                └
+              </span>
+            )}
+
+            {/* TITLE */}
+            <input
+              value={title}
+              onChange={(e) =>
+                setTitle(
+                  e.target.value
+                )
               }
               style={{
                 border: "none",
-                background: "transparent",
+                outline: "none",
+                background:
+                  "transparent",
+                fontSize: "14px",
+                width: "100%",
+                fontWeight: "600",
+              }}
+            />
+          </div>
+
+          {/* RIGHT */}
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+            }}
+          >
+            {/* ADD CHILD */}
+            <button
+              onClick={() =>
+                onAddChild(
+                  section._id
+                )
+              }
+              style={{
+                border:
+                  "1px solid #ddd",
+                borderRadius: "4px",
+                padding: "4px 8px",
                 cursor: "pointer",
-                fontSize: "12px",
-                width: "18px",
+                background:
+                  "#f9fafb",
               }}
             >
-              {expanded ? "▼" : "▶"}
+              + Child
             </button>
-          ) : (
-            <span style={{ width: "18px" }}>
-              └
-            </span>
-          )}
 
-          {/* TITLE */}
-          <input
-            value={title}
-            onChange={(e) =>
-              setTitle(e.target.value)
-            }
-            onBlur={saveTitle}
-            style={{
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              fontSize: "14px",
-              width: "100%",
-            }}
-          />
+            {/* DELETE */}
+            <button
+              onClick={
+                handleDelete
+              }
+              style={{
+                border:
+                  "1px solid #fecaca",
+                borderRadius: "4px",
+                padding: "4px 8px",
+                cursor: "pointer",
+                background:
+                  "#fef2f2",
+                color: "#dc2626",
+              }}
+            >
+              Delete
+            </button>
+          </div>
         </div>
 
-        {/* RIGHT */}
+        {/* CONTENT */}
         <div
           style={{
-            display: "flex",
-            gap: "8px",
+            marginTop: "4px",
           }}
         >
-          {/* ADD CHILD */}
-          <button
-            onClick={() =>
-              onAddChild(section._id)
-            }
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "4px",
-              padding: "4px 8px",
-              cursor: "pointer",
-              background: "#f9fafb",
-            }}
-          >
-            + Child
-          </button>
+          {editingContent ? (
+            <textarea
+              value={content}
+              onChange={(e) => {
+                setContent(
+                  e.target.value
+                );
+              }}
+              onBlur={async () => {
+                await saveContent(
+                  content
+                );
 
-          {/* DELETE */}
-          <button
-            onClick={handleDelete}
-            style={{
-              border: "1px solid #fecaca",
-              borderRadius: "4px",
-              padding: "4px 8px",
-              cursor: "pointer",
-              background: "#fef2f2",
-              color: "#dc2626",
-            }}
-          >
-            Delete
-          </button>
+                setEditingContent(
+                  false
+                );
+              }}
+              autoFocus
+              placeholder="Write section content..."
+              style={{
+                width: "100%",
+                minHeight: "140px",
+                padding: "10px",
+                border:
+                  "1px solid #ddd",
+                borderRadius: "6px",
+                resize: "vertical",
+                fontSize: "14px",
+                lineHeight: "1.5",
+              }}
+            />
+          ) : (
+            <div
+              onClick={() =>
+                setEditingContent(
+                  true
+                )
+              }
+              style={{
+                padding: "10px",
+                border:
+                  "1px solid #e5e7eb",
+                borderRadius: "6px",
+                background:
+                  "#fafafa",
+                cursor: "text",
+                minHeight: "60px",
+              }}
+            >
+              {content ? (
+                <ReactMarkdown>
+                  {content}
+                </ReactMarkdown>
+              ) : (
+                <span
+                  style={{
+                    color:
+                      "#9ca3af",
+                  }}
+                >
+                  Click to add content...
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* CHILDREN */}
       {expanded &&
-        section.children?.map((child) => (
-          <SectionNode
-            key={child._id}
-            section={child}
-            depth={depth + 1}
-            onAddChild={onAddChild}
-            onDelete={onDelete}
-          />
-        ))}
+        section.children?.map(
+          (child) => (
+            <SectionNode
+              key={child._id}
+              section={child}
+              depth={depth + 1}
+              onAddChild={
+                onAddChild
+              }
+              onDelete={onDelete}
+            />
+          )
+        )}
     </div>
   );
 }
