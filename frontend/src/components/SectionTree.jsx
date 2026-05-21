@@ -1,4 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
 import SectionNode from "./SectionNode";
 
 import {
@@ -16,9 +20,10 @@ import {
 // ROOT DROP ZONE
 // =========================
 function RootDropZone() {
-  const { setNodeRef, isOver } = useDroppable({
-    id: "ROOT_DROP",
-  });
+  const { setNodeRef, isOver } =
+    useDroppable({
+      id: "ROOT_DROP",
+    });
 
   return (
     <div
@@ -43,7 +48,18 @@ function RootDropZone() {
 export default function SectionTree({
   documentId,
 }) {
-  const [structure, setStructure] = useState([]);
+  const [structure, setStructure] =
+    useState([]);
+
+  // =========================
+  // DOCUMENT TITLE
+  // =========================
+  const [
+    documentTitle,
+    setDocumentTitle,
+  ] = useState(
+    "📄 Recursive Document Tree"
+  );
 
   // =========================
   // LOAD TREE
@@ -65,7 +81,9 @@ export default function SectionTree({
   // =========================
   // CREATE CHILD SECTION
   // =========================
-  async function createChild(parentId) {
+  async function createChild(
+    parentId
+  ) {
     await fetch(
       "http://localhost:3000/sections",
       {
@@ -78,7 +96,8 @@ export default function SectionTree({
           documentId,
           title: "New Section",
           content: "New section",
-          parentSectionId: parentId,
+          parentSectionId:
+            parentId,
           order: 1,
         }),
       }
@@ -101,10 +120,13 @@ export default function SectionTree({
         },
         body: JSON.stringify({
           documentId,
-          title: "New Root Section",
-          content: "New root section",
+          title:
+            "New Root Section",
+          content:
+            "New root section",
           parentSectionId: null,
-          order: structure.length + 1,
+          order:
+            structure.length + 1,
         }),
       }
     );
@@ -165,7 +187,9 @@ export default function SectionTree({
 
       if (node.children?.length) {
         result = result.concat(
-          flattenTree(node.children)
+          flattenTree(
+            node.children
+          )
         );
       }
     }
@@ -190,13 +214,16 @@ export default function SectionTree({
       }
 
       if (node.children?.length) {
-        const result = findParentId(
-          node.children,
-          id,
-          node._id
-        );
+        const result =
+          findParentId(
+            node.children,
+            id,
+            node._id
+          );
 
-        if (result !== undefined) {
+        if (
+          result !== undefined
+        ) {
           return result;
         }
       }
@@ -208,19 +235,30 @@ export default function SectionTree({
   // =========================
   // DRAG END
   // =========================
-  async function handleDragEnd(event) {
-    const { active, over } = event;
+  async function handleDragEnd(
+    event
+  ) {
+    const { active, over } =
+      event;
 
-    if (!over || active.id === over.id)
+    if (
+      !over ||
+      active.id === over.id
+    ) {
       return;
+    }
 
-    const draggedId = active.id;
+    const draggedId =
+      active.id;
+
     const targetId = over.id;
 
     // =========================
     // ROOT DROP
     // =========================
-    if (targetId === "ROOT_DROP") {
+    if (
+      targetId === "ROOT_DROP"
+    ) {
       await moveSection(
         draggedId,
         null,
@@ -260,12 +298,14 @@ export default function SectionTree({
             findParentId(
               structure,
               s._id
-            ) === draggedParentId
+            ) ===
+            draggedParentId
         );
 
       const targetIndex =
         siblings.findIndex(
-          (s) => s._id === targetId
+          (s) =>
+            s._id === targetId
         );
 
       await moveSection(
@@ -293,22 +333,48 @@ export default function SectionTree({
 
   return (
     <div style={{ padding: 16 }}>
-      <h2>
-        📄 Recursive Document Tree
-      </h2>
+      {/* DOCUMENT TITLE */}
+      <input
+        value={documentTitle}
+        onChange={(e) =>
+          setDocumentTitle(
+            e.target.value
+          )
+        }
+        onPointerDown={(e) =>
+          e.stopPropagation()
+        }
+        style={{
+          fontSize: "28px",
+          fontWeight: "700",
+          border: "none",
+          outline: "none",
+          width: "100%",
+          marginBottom: "16px",
+          background: "transparent",
+        }}
+      />
 
       <RootDropZone />
 
       {/* ROOT BUTTON */}
-      <div style={{ marginBottom: 12 }}>
+      <div
+        style={{
+          marginBottom: 12,
+        }}
+      >
         <button
-          onClick={createRootSection}
+          onClick={
+            createRootSection
+          }
           style={{
             padding: "6px 10px",
-            border: "1px solid #ddd",
+            border:
+              "1px solid #ddd",
             borderRadius: "6px",
             cursor: "pointer",
-            background: "#f9fafb",
+            background:
+              "#f9fafb",
           }}
         >
           + Root Section
@@ -320,7 +386,9 @@ export default function SectionTree({
         collisionDetection={
           closestCenter
         }
-        onDragEnd={handleDragEnd}
+        onDragEnd={
+          handleDragEnd
+        }
       >
         <SortableContext
           items={flatStructure.map(
@@ -330,16 +398,24 @@ export default function SectionTree({
             verticalListSortingStrategy
           }
         >
-          {structure.map((section) => (
-            <SectionNode
-              key={section._id}
-              section={section}
-              depth={0}
-              onAddChild={createChild}
-              onDelete={deleteSection}
-              onMove={moveSection}
-            />
-          ))}
+          {structure.map(
+            (section) => (
+              <SectionNode
+                key={section._id}
+                section={section}
+                depth={0}
+                onAddChild={
+                  createChild
+                }
+                onDelete={
+                  deleteSection
+                }
+                onMove={
+                  moveSection
+                }
+              />
+            )
+          )}
         </SortableContext>
       </DndContext>
     </div>

@@ -9,6 +9,8 @@ import { CSS } from "@dnd-kit/utilities";
 
 import ReactMarkdown from "react-markdown";
 
+import remarkGfm from "remark-gfm";
+
 export default function SectionNode({
   section,
   depth = 0,
@@ -157,8 +159,6 @@ export default function SectionNode({
     >
       {/* NODE */}
       <div
-        {...attributes}
-        {...listeners}
         style={{
           padding: "10px",
           marginBottom: "6px",
@@ -168,7 +168,7 @@ export default function SectionNode({
           display: "flex",
           flexDirection: "column",
           gap: "10px",
-          cursor: "grab",
+          cursor: "default",
         }}
       >
         {/* TOP ROW */}
@@ -190,6 +190,20 @@ export default function SectionNode({
               flex: 1,
             }}
           >
+            {/* DRAG HANDLE */}
+            <div
+              {...attributes}
+              {...listeners}
+              style={{
+                cursor: "grab",
+                padding: "4px",
+                color: "#6b7280",
+                userSelect: "none",
+              }}
+            >
+              ☰
+            </div>
+
             {/* EXPAND */}
             {hasChildren ? (
               <button
@@ -225,15 +239,13 @@ export default function SectionNode({
             <input
               value={title}
               onChange={(e) =>
-                setTitle(
-                  e.target.value
-                )
+                setTitle(e.target.value)
               }
+              onPointerDown={(e) => e.stopPropagation()}
               style={{
                 border: "none",
                 outline: "none",
-                background:
-                  "transparent",
+                background: "transparent",
                 fontSize: "14px",
                 width: "100%",
                 fontWeight: "600",
@@ -296,36 +308,100 @@ export default function SectionNode({
           }}
         >
           {editingContent ? (
-            <textarea
-              value={content}
-              onChange={(e) => {
-                setContent(
-                  e.target.value
-                );
-              }}
-              onBlur={async () => {
-                await saveContent(
-                  content
-                );
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  marginBottom: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  onClick={() =>
+                    setContent(content + "\n**bold**")
+                  }
+                  type="button"
+                >
+                  Bold
+                </button>
 
-                setEditingContent(
-                  false
-                );
-              }}
-              autoFocus
-              placeholder="Write section content..."
-              style={{
-                width: "100%",
-                minHeight: "140px",
-                padding: "10px",
-                border:
-                  "1px solid #ddd",
-                borderRadius: "6px",
-                resize: "vertical",
-                fontSize: "14px",
-                lineHeight: "1.5",
-              }}
-            />
+                <button
+                  onClick={() =>
+                    setContent(content + "\n*italic*")
+                  }
+                  type="button"
+                >
+                  Italic
+                </button>
+
+                <button
+                  onClick={() =>
+                    setContent(content + "\n# Heading")
+                  }
+                  type="button"
+                >
+                  H1
+                </button>
+
+                <button
+                  onClick={() =>
+                    setContent(
+                      content + "\n- List Item"
+                    )
+                  }
+                  type="button"
+                >
+                  List
+                </button>
+
+                <button
+                  onClick={() =>
+                    setContent(
+                      content +
+                        "\n```js\nconsole.log('hello')\n```"
+                    )
+                  }
+                  type="button"
+                >
+                  Code
+                </button>
+              </div>
+
+              <textarea
+                value={content}
+                onPointerDown={(e) =>
+                  e.stopPropagation()
+                }
+                onChange={(e) => {
+                  setContent(
+                    e.target.value
+                  );
+                }}
+                onBlur={async () => {
+                  await saveContent(
+                    content
+                  );
+
+                  setEditingContent(
+                    false
+                  );
+                }}
+                autoFocus
+                placeholder="Write section content..."
+                style={{
+                  width: "100%",
+                  minHeight: "140px",
+                  padding: "10px",
+                  border:
+                    "1px solid #ddd",
+                  borderRadius: "6px",
+                  resize: "vertical",
+                  fontSize: "14px",
+                  lineHeight: "1.5",
+                }}
+              />
+            </>
           ) : (
             <div
               onClick={() =>
@@ -345,9 +421,11 @@ export default function SectionNode({
               }}
             >
               {content ? (
-                <ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+              >
                   {content}
-                </ReactMarkdown>
+              </ReactMarkdown>
               ) : (
                 <span
                   style={{
