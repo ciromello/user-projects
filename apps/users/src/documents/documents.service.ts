@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
+
 import { InjectModel } from '@nestjs/mongoose';
+
 import { Model } from 'mongoose';
+
 import { Document } from './schemas/document.schema';
 
 @Injectable()
@@ -20,5 +23,23 @@ export class DocumentsService {
 
   async findOne(id: string) {
     return this.documentModel.findById(id).exec();
+  }
+
+  // =========================
+  // UPDATE TITLE
+  // =========================
+  async updateTitle(
+    id: string,
+    title: string,
+  ) {
+    return this.documentModel.findByIdAndUpdate(
+      id,
+      {
+        title,
+      },
+      {
+        returnDocument: 'after',
+      },
+    );
   }
 }

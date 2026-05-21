@@ -57,9 +57,7 @@ export default function SectionTree({
   const [
     documentTitle,
     setDocumentTitle,
-  ] = useState(
-    "📄 Recursive Document Tree"
-  );
+  ] = useState("");
 
   // =========================
   // LOAD TREE

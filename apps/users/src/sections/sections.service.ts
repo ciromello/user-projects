@@ -46,7 +46,7 @@ export class SectionsService {
     return this.sectionModel.findByIdAndUpdate(
       id,
       { title },
-      { new: true },
+      { returnDocument: 'after' },
     );
   }
 
@@ -60,7 +60,7 @@ export class SectionsService {
     return this.sectionModel.findByIdAndUpdate(
       id,
       { content },
-      { new: true },
+      { returnDocument: 'after' },
     );
   }
 
